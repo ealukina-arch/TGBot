@@ -1,0 +1,42 @@
+import telebot
+from config import TOKEN
+from extensions import CurrencyConverter, APIException
+
+bot = telebot.TeleBot(TOKEN)
+
+@bot.message_handler(commands=['start', 'help'])
+def send_instructions(message):
+    text = (
+        "Чтобы узнать цену валюты, отправьте сообщение в формате:\n"
+        "<имя валюты, цену которой хотите узнать> "
+        "<имя валюты, в которой надо узнать цену> "
+        "<количество>\n"
+        "Например: евро доллар 100\n"
+        "Доступные валюты: евро, доллар, рубль.\n"
+        "Посмотреть список валют: /values"
+    )
+    bot.send_message(message.chat.id, text)
+
+@bot.message_handler(commands=['values'])
+def send_values(message):
+    text = "Доступные валюты:\n"
+    text += "\n".join(CurrencyConverter.currencies.keys())
+    bot.send_message(message.chat.id, text)
+
+@bot.message_handler(content_types=['text'])
+def convert(message):
+    try:
+        params = message.text.split()
+        if len(params) != 3:
+            raise APIException("Неверное количество параметров.")
+        base, quote, amount = params
+        price = CurrencyConverter.get_price(base, quote, amount)
+    except APIException as e:
+        bot.send_message(message.chat.id, f"Ошибка пользователя:\n{str(e)}")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Неизвестная ошибка:\n{str(e)}")
+    else:
+        text = f"Цена {amount} {base} в {quote} — {price}"
+        bot.send_message(message.chat.id, text)
+
+bot.polling()
