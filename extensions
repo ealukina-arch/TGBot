@@ -1,0 +1,43 @@
+import requests
+import json
+
+class APIException(Exception):
+    pass
+
+
+class CurrencyConverter:
+    currencies = {
+        "евро": "EUR",
+        "доллар": "USD",
+        "рубль": "RUB",
+    }
+
+    @staticmethod
+    def get_price(base: str, quote: str, amount: str):
+        try:
+            base_ticker = CurrencyConverter.currencies[base.lower()]
+        except KeyError:
+            raise APIException(f"Валюта '{base}' не поддерживается.")
+        try:
+            quote_ticker = CurrencyConverter.currencies[quote.lower()]
+        except KeyError:
+            raise APIException(f"Валюта '{quote}' не поддерживается.")
+        try:
+            amount = float(amount.replace(",", "."))
+        except ValueError:
+            raise APIException("Некорректное количество валюты.")
+
+        if base_ticker == quote_ticker:
+            raise APIException("Нельзя переводить валюту саму в себя.")
+
+        url = (
+            f"https://api.exchangerate.host/convert"
+            f"?from={base_ticker}&to={quote_ticker}&amount={amount}&access_key=5c14b4ae5b6bc703c931d1e66a2ddab1"
+        )
+        r = requests.get(url)
+        data = json.loads(r.content)
+
+        if not data.get("success"):
+            raise APIException("Ошибка при получении данных от API exchangerate.host.")
+
+        return data["result"]
